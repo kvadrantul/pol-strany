@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Пол Страны - Поиск бригад по стяжке пола</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <!-- Экран выбора роли -->
+  <div id="role-selection" class="screen active">
+    <div class="container">
+      <div class="logo">
+        <img src="images/logo.svg" alt="Пол Страны" class="logo-image">
+        <h1>Пол Страны</h1>
+        <p>Выберите вашу роль</p>
+      </div>
+      <div class="role-buttons">
+        <button class="role-btn" data-role="client">
+          <div class="role-icon">👤</div>
+          <div class="role-title">Я хочу сделать стяжку</div>
+          <div class="role-desc">Найти бригаду для ремонта</div>
+        </button>
+        <button class="role-btn" data-role="contractor">
+          <div class="role-icon">🔧</div>
+          <div class="role-title">Я бригадир</div>
+          <div class="role-desc">Принимать заказы</div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Интерфейс клиента -->
+  <div id="client-screen" class="screen">
+    <div class="header">
+      <h2>Поиск бригады</h2>
+      <button class="btn-icon" id="client-menu-btn">☰</button>
+    </div>
+    
+    <div class="container">
+      <!-- Тарифы -->
+      <div class="section">
+        <h3>Тарифы</h3>
+        <div id="tariffs-list" class="tariffs-grid"></div>
+      </div>
+
+      <!-- Поиск -->
+      <div class="section">
+        <h3>Выберите тариф</h3>
+        <select id="tariff-select" class="form-select">
+          <option value="">Выберите тариф...</option>
+        </select>
+        <input type="number" id="area-input" class="form-input" placeholder="Площадь (м²)" min="1" step="0.1">
+        <input type="text" id="address-input" class="form-input" placeholder="Адрес (необязательно)">
+        <button class="btn-primary" id="search-btn">🔍 Найти бригаду</button>
+      </div>
+
+      <!-- Анимация поиска -->
+      <div id="search-animation" class="search-animation hidden">
+        <div class="spinner"></div>
+        <p>Ищем подходящую бригаду...</p>
+      </div>
+
+      <!-- Найденный исполнитель -->
+      <div id="found-contractor" class="contractor-card hidden">
+        <div class="contractor-header">
+          <img id="contractor-avatar" src="" alt="Аватар" class="avatar">
+          <div class="contractor-info">
+            <h4 id="contractor-name"></h4>
+            <div class="contractor-rating">
+              <span id="contractor-rating">⭐ 0.0</span>
+              <span id="contractor-experience">Опыт: 0 лет</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn-secondary" id="view-profile-btn">👤 Посмотреть профиль</button>
+        <button class="btn-primary" id="contact-btn">💬 Написать в Telegram</button>
+      </div>
+
+      <!-- Профиль исполнителя -->
+      <div id="contractor-profile-modal" class="modal hidden">
+        <div class="modal-content">
+          <button class="modal-close" id="close-profile-modal">×</button>
+          <h3>Профиль бригадира</h3>
+          <div id="profile-details"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Интерфейс бригадира -->
+  <div id="contractor-screen" class="screen">
+    <div class="header">
+      <h2>Панель бригадира</h2>
+      <button class="btn-icon" id="contractor-menu-btn">☰</button>
+    </div>
+
+    <div class="container">
+      <!-- Профиль -->
+      <div class="section" id="contractor-profile-section">
+        <h3>Мой профиль</h3>
+        <div id="profile-status" class="status-badge">Не заполнен</div>
+        <button class="btn-primary" id="edit-profile-btn">✏️ Редактировать профиль</button>
+      </div>
+
+      <!-- Форма редактирования профиля -->
+      <div id="profile-form" class="section hidden">
+        <h3>Редактирование профиля</h3>
+        <input type="text" id="profile-name" class="form-input" placeholder="Имя">
+        <input type="tel" id="profile-phone" class="form-input" placeholder="Телефон">
+        <input type="number" id="profile-experience" class="form-input" placeholder="Опыт работы (лет)" min="0">
+        <div class="form-group">
+          <label>Выберите категории работ:</label>
+          <div id="categories-checkboxes" class="checkboxes"></div>
+        </div>
+        <button class="btn-primary" id="save-profile-btn">💾 Сохранить</button>
+        <button class="btn-secondary" id="cancel-profile-btn">Отмена</button>
+      </div>
+
+      <!-- Входящие заявки -->
+      <div class="section">
+        <h3>Входящие заявки</h3>
+        <div id="pending-orders-list" class="orders-list"></div>
+      </div>
+
+      <!-- Активные заказы -->
+      <div class="section">
+        <h3>Активные заказы</h3>
+        <div id="active-orders-list" class="orders-list"></div>
+      </div>
+
+      <!-- Завершенные заказы -->
+      <div class="section">
+        <h3>Завершенные заказы</h3>
+        <div id="completed-orders-list" class="orders-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Меню -->
+  <div id="menu-modal" class="modal hidden">
+    <div class="modal-content">
+      <button class="modal-close" id="close-menu-modal">×</button>
+      <h3>Меню</h3>
+      <button class="btn-secondary" id="change-role-btn">🔄 Сменить роль</button>
+      <button class="btn-secondary" id="logout-btn">🚪 Выйти</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
+
