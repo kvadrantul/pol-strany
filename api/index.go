@@ -861,6 +861,7 @@ func handleAPI(w http.ResponseWriter, r *http.Request) {
 	api.HandleFunc("/orders/{orderId}/accept", app.handleAcceptOrder).Methods("POST")
 	api.HandleFunc("/orders/{orderId}/complete", app.handleCompleteOrder).Methods("POST")
 	api.HandleFunc("/orders/{orderId}/reject", app.handleRejectOrder).Methods("POST")
+	api.HandleFunc("/migrate", app.handleMigrate).Methods("POST")
 
 	router.ServeHTTP(w, r)
 }
