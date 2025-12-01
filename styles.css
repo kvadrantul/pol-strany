@@ -70,18 +70,9 @@ body {
   display: block;
 }
 
-/* Top Panel - поиск */
+/* Top Panel - поиск (скрыта) */
 .top-panel {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  padding: var(--spacing-md);
-  padding-top: calc(env(safe-area-inset-top) + var(--spacing-md));
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+  display: none;
 }
 
 .back-btn {

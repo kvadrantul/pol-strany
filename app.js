@@ -24,7 +24,10 @@ const CENTER_Y = 0.5; // 50% от высоты
 document.addEventListener('DOMContentLoaded', async () => {
   await initApp();
   setupEventListeners();
-  initMap();
+  // Инициализируем карту после небольшой задержки, чтобы DOM был готов
+  setTimeout(() => {
+    initMap();
+  }, 100);
 });
 
 // Инициализация приложения
@@ -245,7 +248,7 @@ async function searchContractors() {
         telegram_id: telegramId,
         category: tariff,
         area: parseFloat(area),
-        address: document.getElementById('address-search').value || null
+        address: null
       })
     });
 
@@ -258,11 +261,14 @@ async function searchContractors() {
     
     if (searchResponse.ok) {
       const data = await searchResponse.json();
+      console.log('Search response:', data);
       const contractors = data.contractors || [];
+      console.log('Found contractors:', contractors.length);
 
       if (contractors.length > 0) {
         // Берем первые 5 бригад для анимации (как в требованиях)
         const resultsForAnimation = contractors.slice(0, 5);
+        console.log('Animating for', resultsForAnimation.length, 'contractors');
         
         // Запускаем анимацию на карте с 5 бригадами
         await animateMapSearch(resultsForAnimation);
@@ -272,6 +278,10 @@ async function searchContractors() {
       } else {
         alert('К сожалению, сейчас нет доступных бригад для этого тарифа');
       }
+    } else {
+      const errorText = await searchResponse.text();
+      console.error('Search error:', searchResponse.status, errorText);
+      alert('Ошибка поиска бригад: ' + searchResponse.status);
     }
   } catch (error) {
     console.error('Ошибка поиска:', error);
@@ -283,32 +293,55 @@ async function searchContractors() {
 
 // Анимация поиска на карте
 async function animateMapSearch(contractors) {
-  if (!mapCanvas || !mapCtx) return;
+  if (!mapCanvas || !mapCtx) {
+    console.error('Canvas not initialized');
+    return;
+  }
   
+  console.log('Starting animation for', contractors.length, 'contractors');
+  
+  // Убеждаемся что canvas правильно размещен
   const container = mapCanvas.parentElement;
-  const centerX = container.offsetWidth * CENTER_X;
-  const centerY = container.offsetHeight * CENTER_Y;
+  if (!container) {
+    console.error('Container not found');
+    return;
+  }
+  
+  // Обновляем размеры canvas если нужно
+  mapCanvas.width = container.offsetWidth || window.innerWidth;
+  mapCanvas.height = container.offsetHeight || window.innerHeight;
+  
+  const centerX = mapCanvas.width * CENTER_X;
+  const centerY = mapCanvas.height * CENTER_Y;
+  
+  console.log('Canvas size:', mapCanvas.width, mapCanvas.height);
+  console.log('Center:', centerX, centerY);
   
   // Очищаем canvas
   mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
   
-  // Генерируем случайные позиции для бригад
+  // Генерируем случайные позиции для бригад (не слишком близко к краям)
+  const padding = 50;
   const positions = contractors.map(() => ({
-    x: Math.random() * container.offsetWidth,
-    y: Math.random() * container.offsetHeight
+    x: padding + Math.random() * (mapCanvas.width - padding * 2),
+    y: padding + Math.random() * (mapCanvas.height - padding * 2)
   }));
+  
+  console.log('Positions:', positions);
   
   // Создаем маркеры
   const markersContainer = document.getElementById('map-markers');
-  markersContainer.innerHTML = '';
-  
-  positions.forEach((pos, index) => {
-    const marker = document.createElement('div');
-    marker.className = 'map-marker';
-    marker.style.left = `${pos.x}px`;
-    marker.style.top = `${pos.y}px`;
-    markersContainer.appendChild(marker);
-  });
+  if (markersContainer) {
+    markersContainer.innerHTML = '';
+    
+    positions.forEach((pos, index) => {
+      const marker = document.createElement('div');
+      marker.className = 'map-marker';
+      marker.style.left = `${pos.x}px`;
+      marker.style.top = `${pos.y}px`;
+      markersContainer.appendChild(marker);
+    });
+  }
   
   // Анимация линий - рисуем одновременно ко всем точкам
   return new Promise((resolve) => {
@@ -349,7 +382,16 @@ async function animateMapSearch(contractors) {
       if (progress < 1) {
         requestAnimationFrame(animate);
       } else {
-        // Анимация завершена
+        // Анимация завершена - рисуем финальные линии
+        positions.forEach((pos) => {
+          mapCtx.beginPath();
+          mapCtx.moveTo(centerX, centerY);
+          mapCtx.lineTo(pos.x, pos.y);
+          mapCtx.strokeStyle = '#09B3AF';
+          mapCtx.lineWidth = 3;
+          mapCtx.stroke();
+        });
+        console.log('Animation completed');
         resolve();
       }
     }
@@ -360,11 +402,29 @@ async function animateMapSearch(contractors) {
 
 // Отображение результатов поиска
 function displaySearchResults(contractors, tariffKey, area) {
+  console.log('Displaying results:', contractors.length, 'contractors');
+  console.log('Tariff key:', tariffKey);
+  console.log('Tariffs:', tariffs);
+  
   const tariff = tariffs[tariffKey];
+  console.log('Selected tariff:', tariff);
+  
   const resultsList = document.getElementById('results-list');
+  if (!resultsList) {
+    console.error('Results list element not found');
+    return;
+  }
+  
   resultsList.innerHTML = '';
   
-  contractors.forEach((contractor) => {
+  if (contractors.length === 0) {
+    resultsList.innerHTML = '<p>Бригады не найдены</p>';
+    return;
+  }
+  
+  contractors.forEach((contractor, index) => {
+    console.log(`Contractor ${index}:`, contractor);
+    
     // API возвращает поля с заглавной буквы, но можем получить и с маленькой
     const name = contractor.Name || contractor.name || 'Бригада';
     const rating = contractor.Rating !== undefined ? contractor.Rating : (contractor.rating || 0);
@@ -372,8 +432,15 @@ function displaySearchResults(contractors, tariffKey, area) {
     const orders = contractor.CompletedOrders !== undefined ? contractor.CompletedOrders : (contractor.completed_orders || 0);
     const telegramId = contractor.TelegramID || contractor.telegram_id;
     
-    const pricePerM2 = tariff ? 
-      ((tariff.priceRange?.min || tariff.PriceRange?.Min || 0) + (tariff.priceRange?.max || tariff.PriceRange?.Max || 0)) / 2 : 0;
+    // Получаем цену из тарифа (API возвращает с маленькой буквы)
+    let pricePerM2 = 0;
+    if (tariff) {
+      if (tariff.priceRange) {
+        pricePerM2 = (tariff.priceRange.min + tariff.priceRange.max) / 2;
+      } else if (tariff.PriceRange) {
+        pricePerM2 = (tariff.PriceRange.Min + tariff.PriceRange.Max) / 2;
+      }
+    }
     const totalPrice = Math.round(pricePerM2 * area);
     const tariffName = tariff ? (tariff.name || tariff.Name || tariffKey) : tariffKey;
     
@@ -390,8 +457,8 @@ function displaySearchResults(contractors, tariffKey, area) {
         <div class="result-card-rating">
           ⭐ ${rating.toFixed(1)}
         </div>
-        <div>Опыт: ${experience} лет</div>
-        <div>Заказов: ${orders}</div>
+        <div>Опыт: ${experience || 0} ${experience === 1 ? 'год' : experience < 5 ? 'года' : 'лет'}</div>
+        <div>Заказов: ${orders || 0}</div>
       </div>
       <div class="result-card-price">${totalPrice} ₽</div>
     `;
@@ -404,8 +471,13 @@ function displaySearchResults(contractors, tariffKey, area) {
   });
   
   // Показываем результаты
-  document.getElementById('search-form').classList.add('hidden');
-  document.getElementById('search-results').classList.remove('hidden');
+  const searchForm = document.getElementById('search-form');
+  const searchResults = document.getElementById('search-results');
+  
+  if (searchForm) searchForm.classList.add('hidden');
+  if (searchResults) searchResults.classList.remove('hidden');
+  
+  console.log('Results displayed');
 }
 
 // Контакт с бригадой
