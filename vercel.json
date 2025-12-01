@@ -3,11 +3,6 @@
   "buildCommand": null,
   "outputDirectory": ".",
   "framework": null,
-  "functions": {
-    "api/index.go": {
-      "runtime": "@vercel/go"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
