@@ -640,9 +640,34 @@ func (app *App) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if user == nil || user.Role != "client" {
-		http.Error(w, "Пользователь не является клиентом", http.StatusBadRequest)
-		return
+	
+	// Если пользователь не найден, создаем его как клиента
+	if user == nil {
+		defaultName := fmt.Sprintf("User %d", req.TelegramID)
+		_, err := app.createUser(req.TelegramID, "client", &defaultName, nil, nil)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Ошибка создания пользователя: %v", err), http.StatusInternalServerError)
+			return
+		}
+		user, err = app.getUserByTelegramID(req.TelegramID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Ошибка получения пользователя: %v", err), http.StatusInternalServerError)
+			return
+		}
+		if user == nil {
+			http.Error(w, "Не удалось создать пользователя", http.StatusInternalServerError)
+			return
+		}
+	}
+	
+	// Если роль не "client", обновляем на "client" (так как убрали режим бригадира)
+	if user.Role != "client" {
+		_, err = app.db.Exec("UPDATE users SET role = ? WHERE id = ?", "client", user.ID)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Ошибка обновления роли: %v", err), http.StatusInternalServerError)
+			return
+		}
+		user.Role = "client"
 	}
 	orderID, err := app.createOrder(user.ID, req.Category, req.Area, req.Address)
 	if err != nil {
