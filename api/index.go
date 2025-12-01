@@ -796,19 +796,11 @@ func (app *App) handleRejectOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 // Handler - экспортированная функция для Vercel
-// Обрабатывает только API запросы, статика обслуживается Vercel автоматически из корня проекта
+// Обрабатывает только API запросы через rewrites, статика обслуживается Vercel автоматически
 func Handler(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	
-	// Обрабатываем только API запросы
-	if strings.HasPrefix(path, "/api") {
-		handleAPI(w, r)
-		return
-	}
-	
-	// Все остальные запросы должны обслуживаться Vercel как статика
-	// Возвращаем 404 только если это не статика (на случай ошибок)
-	http.NotFound(w, r)
+	// Handler вызывается только для /api/* через rewrites
+	// Статические файлы обрабатываются Vercel автоматически до попадания сюда
+	handleAPI(w, r)
 }
 
 func handleAPI(w http.ResponseWriter, r *http.Request) {
