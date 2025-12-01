@@ -8,147 +8,73 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <!-- Экран выбора роли -->
-  <div id="role-selection" class="screen active">
-    <div class="container">
-      <div class="logo">
-        <img src="images/logo.svg" alt="Пол Страны" class="logo-image">
-        <h1>Пол Страны</h1>
-        <p>Выберите вашу роль</p>
+  <!-- Главный экран с картой в стиле Uber -->
+  <div id="main-screen" class="screen active">
+    <!-- Верхняя панель с поиском -->
+    <div class="top-panel">
+      <button class="back-btn" id="back-btn" style="display: none;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </button>
+      <div class="search-bar">
+        <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <input type="text" id="address-search" class="search-input" placeholder="Куда едем?" value="1500 Valencia St, San Francisco">
       </div>
-      <div class="role-buttons">
-        <button class="role-btn" data-role="client">
-          <div class="role-icon">👤</div>
-          <div class="role-title">Я хочу сделать стяжку</div>
-          <div class="role-desc">Найти бригаду для ремонта</div>
+    </div>
+
+    <!-- Карта с анимацией -->
+    <div class="map-container">
+      <!-- Статическое изображение карты -->
+      <div class="map-image" id="map-image"></div>
+      <!-- Canvas для анимации линий -->
+      <canvas id="map-canvas"></canvas>
+      <!-- Точки маркеров на карте -->
+      <div class="map-markers" id="map-markers"></div>
+    </div>
+
+    <!-- Нижняя панель с формой и результатами -->
+    <div class="bottom-panel" id="bottom-panel">
+      <div class="panel-handle"></div>
+      
+      <!-- Форма поиска (начальное состояние) -->
+      <div id="search-form" class="panel-content">
+        <div class="form-section">
+          <label class="form-label">Выберите тариф</label>
+          <select id="tariff-select" class="uber-select">
+            <option value="">Выберите тариф...</option>
+          </select>
+        </div>
+        
+        <div class="form-section">
+          <label class="form-label">Площадь (м²)</label>
+          <input type="number" id="area-input" class="uber-input" placeholder="50" min="1" step="0.1">
+        </div>
+        
+        <button class="uber-button-primary" id="search-btn">
+          <span>Найти бригаду</span>
         </button>
-        <button class="role-btn" data-role="contractor">
-          <div class="role-icon">🔧</div>
-          <div class="role-title">Я бригадир</div>
-          <div class="role-desc">Принимать заказы</div>
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Интерфейс клиента -->
-  <div id="client-screen" class="screen">
-    <div class="header">
-      <h2>Поиск бригады</h2>
-      <button class="btn-icon" id="client-menu-btn">☰</button>
-    </div>
-    
-    <div class="container">
-      <!-- Тарифы -->
-      <div class="section">
-        <h3>Тарифы</h3>
-        <div id="tariffs-list" class="tariffs-grid"></div>
       </div>
 
-      <!-- Поиск -->
-      <div class="section">
-        <h3>Выберите тариф</h3>
-        <select id="tariff-select" class="form-select">
-          <option value="">Выберите тариф...</option>
-        </select>
-        <input type="number" id="area-input" class="form-input" placeholder="Площадь (м²)" min="1" step="0.1">
-        <input type="text" id="address-input" class="form-input" placeholder="Адрес (необязательно)">
-        <button class="btn-primary" id="search-btn">🔍 Найти бригаду</button>
-      </div>
-
-      <!-- Анимация поиска -->
-      <div id="search-animation" class="search-animation hidden">
-        <div class="spinner"></div>
-        <p>Ищем подходящую бригаду...</p>
-      </div>
-
-      <!-- Найденный исполнитель -->
-      <div id="found-contractor" class="contractor-card hidden">
-        <div class="contractor-header">
-          <img id="contractor-avatar" src="" alt="Аватар" class="avatar">
-          <div class="contractor-info">
-            <h4 id="contractor-name"></h4>
-            <div class="contractor-rating">
-              <span id="contractor-rating">⭐ 0.0</span>
-              <span id="contractor-experience">Опыт: 0 лет</span>
-            </div>
-          </div>
+      <!-- Результаты поиска (показываются после анимации) -->
+      <div id="search-results" class="panel-content hidden">
+        <div class="results-header">
+          <h3 class="results-title">Найдено бригад</h3>
+          <button class="close-results-btn" id="close-results-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
-        <button class="btn-secondary" id="view-profile-btn">👤 Посмотреть профиль</button>
-        <button class="btn-primary" id="contact-btn">💬 Написать в Telegram</button>
+        <div class="results-list" id="results-list"></div>
       </div>
-
-      <!-- Профиль исполнителя -->
-      <div id="contractor-profile-modal" class="modal hidden">
-        <div class="modal-content">
-          <button class="modal-close" id="close-profile-modal">×</button>
-          <h3>Профиль бригадира</h3>
-          <div id="profile-details"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Интерфейс бригадира -->
-  <div id="contractor-screen" class="screen">
-    <div class="header">
-      <h2>Панель бригадира</h2>
-      <button class="btn-icon" id="contractor-menu-btn">☰</button>
-    </div>
-
-    <div class="container">
-      <!-- Профиль -->
-      <div class="section" id="contractor-profile-section">
-        <h3>Мой профиль</h3>
-        <div id="profile-status" class="status-badge">Не заполнен</div>
-        <button class="btn-primary" id="edit-profile-btn">✏️ Редактировать профиль</button>
-      </div>
-
-      <!-- Форма редактирования профиля -->
-      <div id="profile-form" class="section hidden">
-        <h3>Редактирование профиля</h3>
-        <input type="text" id="profile-name" class="form-input" placeholder="Имя">
-        <input type="tel" id="profile-phone" class="form-input" placeholder="Телефон">
-        <input type="number" id="profile-experience" class="form-input" placeholder="Опыт работы (лет)" min="0">
-        <div class="form-group">
-          <label>Выберите категории работ:</label>
-          <div id="categories-checkboxes" class="checkboxes"></div>
-        </div>
-        <button class="btn-primary" id="save-profile-btn">💾 Сохранить</button>
-        <button class="btn-secondary" id="cancel-profile-btn">Отмена</button>
-      </div>
-
-      <!-- Входящие заявки -->
-      <div class="section">
-        <h3>Входящие заявки</h3>
-        <div id="pending-orders-list" class="orders-list"></div>
-      </div>
-
-      <!-- Активные заказы -->
-      <div class="section">
-        <h3>Активные заказы</h3>
-        <div id="active-orders-list" class="orders-list"></div>
-      </div>
-
-      <!-- Завершенные заказы -->
-      <div class="section">
-        <h3>Завершенные заказы</h3>
-        <div id="completed-orders-list" class="orders-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Меню -->
-  <div id="menu-modal" class="modal hidden">
-    <div class="modal-content">
-      <button class="modal-close" id="close-menu-modal">×</button>
-      <h3>Меню</h3>
-      <button class="btn-secondary" id="change-role-btn">🔄 Сменить роль</button>
-      <button class="btn-secondary" id="logout-btn">🚪 Выйти</button>
     </div>
   </div>
 
   <script src="app.js"></script>
 </body>
 </html>
-
